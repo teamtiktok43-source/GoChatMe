@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Go Chat Me</title>
+
+<style>
+
+body{
+margin:0;
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+font-family:Arial;
+background:linear-gradient(135deg,#5fd0ff,#0084ff);
+}
+
+.card{
+width:320px;
+padding:30px;
+border-radius:15px;
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(10px);
+box-shadow:0 0 20px rgba(0,0,0,0.2);
+text-align:center;
+color:white;
+}
+
+input{
+width:100%;
+padding:12px;
+margin:10px 0;
+border:none;
+border-radius:8px;
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:8px;
+background:#00b7ff;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+
+button:hover{
+background:#009edb;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Go Chat Me</h2>
+
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+<button onclick="register()">Register</button>
+
+</div>
+
+<script>
+
+function login(){
+
+let u=document.getElementById("user").value
+let p=document.getElementById("pass").value
+
+fetch("/login",{
+method:"POST",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded"
+},
+body:"username="+u+"&password="+p
+})
+.then(r=>r.json())
+.then(data=>{
+
+if(data.status==="ok"){
+localStorage.setItem("gomchat_user",u)
+window.location="/chat"
+}else{
+alert("Login failed")
+}
+
+})
+
+}
+
+function register(){
+
+let u=document.getElementById("user").value
+let p=document.getElementById("pass").value
+
+fetch("/register",{
+method:"POST",
+headers:{
+"Content-Type":"application/x-www-form-urlencoded"
+},
+body:"username="+u+"&password="+p
+})
+.then(r=>r.json())
+.then(data=>{
+
+if(data.status==="ok"){
+alert("Account created")
+}else{
+alert("Username exists")
+}
+
+})
+
+}
+
+</script>
+
+</body>
+</html>

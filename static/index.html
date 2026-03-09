@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Go Chat Me</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f6f9;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.box{
+background:white;
+padding:30px;
+border-radius:10px;
+width:320px;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+h2{
+text-align:center;
+color:#00b7ff;
+}
+
+input{
+width:100%;
+padding:10px;
+margin:8px 0;
+border:1px solid #ccc;
+border-radius:6px;
+}
+
+button{
+width:100%;
+padding:10px;
+margin-top:10px;
+background:#00b7ff;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.link{
+text-align:center;
+margin-top:10px;
+cursor:pointer;
+color:#00b7ff;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="box" id="loginBox">
+
+<h2>Go Chat Me</h2>
+
+<input id="loginUser" placeholder="Username">
+<input id="loginPass" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<div class="link" onclick="showRegister()">Register</div>
+
+</div>
+
+
+<div class="box" id="registerBox" style="display:none">
+
+<h2>Create Account</h2>
+
+<input id="regUser" placeholder="Username">
+<input id="regEmail" placeholder="Email">
+<input id="regPhone" placeholder="Phone number">
+<input id="regPass" type="password" placeholder="Password">
+
+<input id="q1" placeholder="Favourite country">
+<input id="q2" placeholder="Birth year">
+<input id="q3" placeholder="Primary school name">
+
+<button onclick="register()">Register</button>
+
+<div class="link" onclick="showLogin()">Back</div>
+
+</div>
+
+
+<script>
+
+function showRegister(){
+
+loginBox.style.display="none"
+registerBox.style.display="block"
+
+}
+
+function showLogin(){
+
+loginBox.style.display="block"
+registerBox.style.display="none"
+
+}
+
+
+function login(){
+
+fetch("/login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+username:loginUser.value,
+password:loginPass.value
+})
+})
+.then(r=>r.json())
+.then(d=>{
+
+if(d.status==="ok"){
+
+localStorage.setItem("gomchat_user",loginUser.value)
+
+window.location="/chat"
+
+}else{
+
+alert("Wrong username or password")
+
+}
+
+})
+
+}
+
+
+function register(){
+
+fetch("/register",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+
+username:regUser.value,
+email:regEmail.value,
+phone:regPhone.value,
+password:regPass.value,
+q1:q1.value,
+q2:q2.value,
+q3:q3.value
+
+})
+})
+.then(r=>r.json())
+.then(d=>{
+
+alert("Account created")
+
+showLogin()
+
+})
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>Go Chat Me</title>
+
+<style>
+
+body{
+margin:0;
+font-family:Arial;
+display:flex;
+height:100vh;
+background:#f2f6f9;
+}
+
+.sidebar{
+width:300px;
+border-right:1px solid #ddd;
+background:white;
+overflow:auto;
+}
+
+.sidebar h2{
+background:#00b7ff;
+color:white;
+margin:0;
+padding:15px;
+}
+
+.chatUser{
+padding:10px;
+border-bottom:1px solid #eee;
+cursor:pointer;
+display:flex;
+align-items:center;
+}
+
+.avatar{
+width:35px;
+height:35px;
+border-radius:50%;
+background:#00b7ff;
+color:white;
+display:flex;
+align-items:center;
+justify-content:center;
+margin-right:10px;
+}
+
+.chatArea{
+flex:1;
+display:flex;
+flex-direction:column;
+}
+
+.header{
+background:#00b7ff;
+color:white;
+padding:15px;
+}
+
+.messages{
+flex:1;
+overflow:auto;
+padding:15px;
+}
+
+.msg{
+margin:10px 0;
+padding:10px 14px;
+border-radius:15px;
+max-width:60%;
+}
+
+.me{
+background:#00b7ff;
+color:white;
+margin-left:auto;
+}
+
+.other{
+background:white;
+border:1px solid #ddd;
+}
+
+.inputArea{
+display:flex;
+padding:10px;
+border-top:1px solid #ddd;
+background:white;
+}
+
+#msg{
+flex:1;
+padding:10px;
+border-radius:20px;
+border:1px solid #ccc;
+}
+
+button{
+margin-left:5px;
+padding:8px 12px;
+background:#00b7ff;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<h2>Go Chat Me</h2>
+
+<button onclick="newChat()" style="width:100%">New Chat</button>
+
+<div id="chatList"></div>
+
+</div>
+
+
+<div class="chatArea">
+
+<div class="header">
+<span id="friend">Select chat</span>
+</div>
+
+<div id="chat" class="messages"></div>
+
+<div class="inputArea">
+
+<input id="msg" placeholder="Message">
+
+<button onclick="send()">Send</button>
+
+<input type="file" id="img" hidden onchange="sendImage(event)">
+<button onclick="document.getElementById('img').click()">📷</button>
+
+</div>
+
+</div>
+
+
+<script>
+
+let username=localStorage.getItem("gomchat_user")
+
+let currentFriend=""
+
+let chat=document.getElementById("chat")
+let msg=document.getElementById("msg")
+let chatList=document.getElementById("chatList")
+
+
+function loadChats(){
+
+fetch("/chats?user="+username)
+.then(r=>r.json())
+.then(data=>{
+
+chatList.innerHTML=""
+
+data.forEach(friend=>{
+
+let div=document.createElement("div")
+div.className="chatUser"
+
+let avatar=document.createElement("div")
+avatar.className="avatar"
+avatar.innerText=friend.charAt(0)
+
+let name=document.createElement("span")
+name.innerText=friend
+
+div.appendChild(avatar)
+div.appendChild(name)
+
+div.onclick=()=>openChat(friend)
+
+chatList.appendChild(div)
+
+})
+
+})
+
+}
+
+loadChats()
+
+
+let ws=new WebSocket("ws://"+location.host+"/ws")
+
+ws.onopen=function(){
+ws.send(username)
+}
+
+ws.onmessage=function(event){
+
+let data=event.data.split("|")
+
+let sender=data[0]
+let receiver=data[1]
+let message=data[2]
+
+if(
+(sender===username && receiver===currentFriend) ||
+(sender===currentFriend && receiver===username)
+){
+
+addMessage(sender,message)
+
+}
+
+}
+
+
+function addMessage(sender,message){
+
+let div=document.createElement("div")
+
+div.className="msg "+(sender===username?"me":"other")
+
+div.innerHTML=message
+
+chat.appendChild(div)
+
+chat.scrollTop=chat.scrollHeight
+
+}
+
+
+function openChat(friend){
+
+currentFriend=friend
+
+document.getElementById("friend").innerText=friend
+
+chat.innerHTML=""
+
+fetch("/messages?user="+username+"&friend="+friend)
+.then(r=>r.json())
+.then(data=>{
+
+data.forEach(m=>{
+
+let parts=m.split(": ")
+
+addMessage(parts[0],parts.slice(1).join(": "))
+
+})
+
+})
+
+}
+
+
+function send(){
+
+let text=msg.value
+
+if(text==="") return
+
+ws.send(username+"|"+currentFriend+"|"+text)
+
+msg.value=""
+
+}
+
+
+function newChat(){
+
+let friend=prompt("Enter username")
+
+if(friend){
+
+openChat(friend)
+
+}
+
+}
+
+
+function sendImage(e){
+
+let file=e.target.files[0]
+
+let reader=new FileReader()
+
+reader.onload=function(){
+
+let img='<img src="'+reader.result+'" width="200">'
+
+ws.send(username+"|"+currentFriend+"|"+img)
+
+}
+
+reader.readAsDataURL(file)
+
+}
+
+</script>
+
+</body>
+</html>
