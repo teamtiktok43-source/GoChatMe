@@ -15,11 +15,9 @@ if not os.path.exists("uploads"):
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-
 @app.get("/")
 async def home():
     return FileResponse("static/index.html")
-
 
 @app.get("/chat")
 async def chat():
@@ -56,8 +54,7 @@ conn.commit()
 
 connections = {}
 
-
-# DATA MODELS
+# MODELS
 
 class RegisterData(BaseModel):
     username:str
@@ -65,10 +62,27 @@ class RegisterData(BaseModel):
     phone:str
     password:str
 
-
 class LoginData(BaseModel):
     username:str
     password:str
+
+class ForgotData(BaseModel):
+    username:str
+    phone:str
+
+
+# CHECK USERNAME
+
+@app.get("/check_username")
+def check_username(username:str):
+
+    cursor.execute("SELECT username FROM users WHERE username=?", (username,))
+    row = cursor.fetchone()
+
+    if row:
+        return {"available":False}
+
+    return {"available":True}
 
 
 # REGISTER
@@ -76,8 +90,14 @@ class LoginData(BaseModel):
 @app.post("/register")
 async def register(data:RegisterData):
 
+    cursor.execute("SELECT username FROM users WHERE username=?", (data.username,))
+    exists = cursor.fetchone()
+
+    if exists:
+        return {"status":"user_exists"}
+
     cursor.execute("""
-    INSERT OR IGNORE INTO users
+    INSERT INTO users(username,email,phone,password,avatar,online)
     VALUES(?,?,?,?,?,0)
     """,(
         data.username,
@@ -102,7 +122,7 @@ async def login(data:LoginData):
     WHERE username=? AND password=?
     """,(data.username,data.password))
 
-    user=cursor.fetchone()
+    user = cursor.fetchone()
 
     if user:
 
@@ -117,14 +137,48 @@ async def login(data:LoginData):
     return {"status":"error"}
 
 
+# FORGOT PASSWORD
+
+@app.post("/forgot")
+async def forgot(data:ForgotData):
+
+    cursor.execute("""
+    SELECT password FROM users
+    WHERE username=? AND phone=?
+    """,(data.username,data.phone))
+
+    row = cursor.fetchone()
+
+    if row:
+        return {"password":row[0]}
+
+    return {"status":"not_found"}
+
+
+# SEARCH USERS
+
+@app.get("/search_users")
+def search_users(q:str):
+
+    cursor.execute("""
+    SELECT username FROM users
+    WHERE username LIKE ?
+    LIMIT 10
+    """,('%'+q+'%',))
+
+    rows = cursor.fetchall()
+
+    return [r[0] for r in rows]
+
+
 # UPLOAD AVATAR
 
 @app.post("/upload_avatar/{username}")
 async def upload_avatar(username:str,file:UploadFile=File(...)):
 
-    filename=str(uuid.uuid4())+"_"+file.filename
+    filename = str(uuid.uuid4())+"_"+file.filename
 
-    path="uploads/"+filename
+    path = "uploads/"+filename
 
     with open(path,"wb") as f:
         f.write(await file.read())
@@ -147,7 +201,7 @@ def status(user:str):
     SELECT online FROM users WHERE username=?
     """,(user,))
 
-    row=cursor.fetchone()
+    row = cursor.fetchone()
 
     if row and row[0]==1:
         return {"status":"online"}
@@ -170,7 +224,7 @@ def chats(user:str):
     WHERE sender=? OR receiver=?
     """,(user,user,user))
 
-    rows=cursor.fetchall()
+    rows = cursor.fetchall()
 
     return [r[0] for r in rows]
 
@@ -194,7 +248,7 @@ def messages(user:str,friend:str):
     ORDER BY id
     """,(user,friend,friend,user))
 
-    rows=cursor.fetchall()
+    rows = cursor.fetchall()
 
     return [f"{r[0]}: {r[1]}" for r in rows]
 
@@ -206,17 +260,26 @@ async def websocket(ws:WebSocket):
 
     await ws.accept()
 
-    username=await ws.receive_text()
+    username = await ws.receive_text()
 
-    connections[username]=ws
+    connections[username] = ws
 
     try:
 
         while True:
 
-            data=await ws.receive_text()
+            data = await ws.receive_text()
 
-            sender,receiver,message=data.split("|",2)
+            if data.startswith("typing|"):
+
+                _,sender,receiver = data.split("|")
+
+                if receiver in connections:
+                    await connections[receiver].send_text(data)
+
+                continue
+
+            sender,receiver,message = data.split("|",2)
 
             cursor.execute("""
             INSERT INTO messages(sender,receiver,message)

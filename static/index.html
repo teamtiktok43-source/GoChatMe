@@ -3,7 +3,9 @@
 
 <head>
 <meta charset="UTF-8">
-<title>Go Chat Me</title>
+<title>GoChatMe</title>
+
+<link rel="manifest" href="/static/manifest.json">
 
 <style>
 
@@ -56,6 +58,12 @@ cursor:pointer;
 color:#00b7ff;
 }
 
+.status{
+font-size:13px;
+margin-top:-5px;
+margin-bottom:5px;
+}
+
 </style>
 
 </head>
@@ -64,7 +72,7 @@ color:#00b7ff;
 
 <div class="box" id="loginBox">
 
-<h2>Go Chat Me</h2>
+<h2>GoChatMe</h2>
 
 <input id="loginUser" placeholder="Username">
 <input id="loginPass" type="password" placeholder="Password">
@@ -72,6 +80,7 @@ color:#00b7ff;
 <button onclick="login()">Login</button>
 
 <div class="link" onclick="showRegister()">Register</div>
+<div class="link" onclick="showForgot()">Forgot Password</div>
 
 </div>
 
@@ -80,16 +89,29 @@ color:#00b7ff;
 
 <h2>Create Account</h2>
 
-<input id="regUser" placeholder="Username">
+<input id="regUser" placeholder="Username" onkeyup="checkUsername()">
+
+<div id="userStatus" class="status"></div>
+
 <input id="regEmail" placeholder="Email">
 <input id="regPhone" placeholder="Phone number">
 <input id="regPass" type="password" placeholder="Password">
 
-<input id="q1" placeholder="Favourite country">
-<input id="q2" placeholder="Birth year">
-<input id="q3" placeholder="Primary school name">
-
 <button onclick="register()">Register</button>
+
+<div class="link" onclick="showLogin()">Back</div>
+
+</div>
+
+
+<div class="box" id="forgotBox" style="display:none">
+
+<h2>Recover Password</h2>
+
+<input id="forgotUser" placeholder="Username">
+<input id="forgotPhone" placeholder="Phone number">
+
+<button onclick="recover()">Recover</button>
 
 <div class="link" onclick="showLogin()">Back</div>
 
@@ -101,6 +123,7 @@ color:#00b7ff;
 function showRegister(){
 
 loginBox.style.display="none"
+forgotBox.style.display="none"
 registerBox.style.display="block"
 
 }
@@ -109,6 +132,15 @@ function showLogin(){
 
 loginBox.style.display="block"
 registerBox.style.display="none"
+forgotBox.style.display="none"
+
+}
+
+function showForgot(){
+
+loginBox.style.display="none"
+registerBox.style.display="none"
+forgotBox.style.display="block"
 
 }
 
@@ -116,12 +148,18 @@ registerBox.style.display="none"
 function login(){
 
 fetch("/login",{
+
 method:"POST",
+
 headers:{"Content-Type":"application/json"},
+
 body:JSON.stringify({
+
 username:loginUser.value,
 password:loginPass.value
+
 })
+
 })
 .then(r=>r.json())
 .then(d=>{
@@ -146,28 +184,114 @@ alert("Wrong username or password")
 function register(){
 
 fetch("/register",{
+
 method:"POST",
+
 headers:{"Content-Type":"application/json"},
+
 body:JSON.stringify({
 
 username:regUser.value,
 email:regEmail.value,
 phone:regPhone.value,
-password:regPass.value,
-q1:q1.value,
-q2:q2.value,
-q3:q3.value
+password:regPass.value
 
 })
+
 })
 .then(r=>r.json())
 .then(d=>{
+
+if(d.status==="user_exists"){
+
+alert("Username already exists")
+
+}else{
 
 alert("Account created")
 
 showLogin()
 
+}
+
 })
+
+}
+
+
+function checkUsername(){
+
+let username = regUser.value
+
+if(username.length < 2){
+
+userStatus.innerText=""
+return
+
+}
+
+fetch("/check_username?username="+username)
+
+.then(r=>r.json())
+
+.then(d=>{
+
+if(d.available){
+
+userStatus.innerText="Username available"
+userStatus.style.color="green"
+
+}else{
+
+userStatus.innerText="Username already taken"
+userStatus.style.color="red"
+
+}
+
+})
+
+}
+
+
+function recover(){
+
+fetch("/forgot",{
+
+method:"POST",
+
+headers:{"Content-Type":"application/json"},
+
+body:JSON.stringify({
+
+username:forgotUser.value,
+phone:forgotPhone.value
+
+})
+
+})
+.then(r=>r.json())
+.then(d=>{
+
+if(d.password){
+
+alert("Your password: "+d.password)
+
+}else{
+
+alert("User not found")
+
+}
+
+})
+
+}
+
+
+/* PWA */
+
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("/static/sw.js")
 
 }
 
